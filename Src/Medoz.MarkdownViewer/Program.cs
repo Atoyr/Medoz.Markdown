@@ -1,13 +1,18 @@
+using System.Threading.Tasks;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using Medoz.MarkdownViewer.Data;
+
+using ElectronNET.API;
+using ElectronNET.API.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddSingleton<WeatherForecastService>();
+builder.WebHost.UseElectron(args);
+
 
 var app = builder.Build();
 
@@ -28,4 +33,6 @@ app.UseRouting();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
+Electron.Menu.SetApplicationMenu(new MenuItem[]{});
+Task.Run(async () => Electron.WindowManager.CreateWindowAsync());
 app.Run();

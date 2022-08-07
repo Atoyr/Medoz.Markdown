@@ -1,9 +1,31 @@
 ﻿@page "/"
 
-<PageTitle>Index</PageTitle>
 
-<h1>Hello, world!</h1>
+<style>
+  h1 {
+    background-color: #ccc;
+  }
 
-Welcome to your new app.
+</style>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+<div class="d-flex">
+  <div class="flex-grow-1 px-1 py-1">
+    <textarea class="form-control" @bind="_text" @bind:event="oninput" />
+  </div>
+  <div class="px-1 py-1">
+    <button type="button" class="btn btn-secondary" @onclick="() => Load()">参照</button>
+  </div>
+</div>
+<div>
+  @if (_tokens == null)
+  {
+      <p><em>Loading...</em></p>
+  }
+  else
+  {
+    @foreach(var t in _tokens)
+    {
+      @((MarkupString)t.ToString())
+    }
+  }
+</div>
