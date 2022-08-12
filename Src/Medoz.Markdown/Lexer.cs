@@ -28,6 +28,17 @@ public class Lexer
         };
     }
 
+    protected Token GenerateBrToken(Token? parent)
+    {
+        return new Token()
+        {
+            Id = this.Id,
+            ElementType = ElementType.NewLine,
+            Parent = parent,
+            Content = string.Empty
+        };
+    }
+
     public IEnumerable<Token> Analize(string markdownText)
     {
         string[] mdArray = markdownText.Split(new string[]{ "\r\n", "\r", "\n"}, StringSplitOptions.None);
@@ -39,52 +50,23 @@ public class Lexer
 
         foreach(string mdRow in mdArray)
         {
+            if (string.IsNullOrEmpty(mdRow))
+            {
+                Status = LexerStatus.Neutral;
+                elements.Add(GenerateBrToken(parent));
+                continue;
+            }
+
             IEnumerable<Token> retElements = default;
 
             switch(Status)
             {
                 case LexerStatus.Neutral:
-                    if(Regex.Match(mdRow, ElementRegex.UnorderedListRegex.Pattern).Success)
-                    {
-                        retElements = TokenizeUnorderedList(parent, mdRow);
-                    }
-                    else if (Regex.Match(mdRow, ElementRegex.OrderedListRegex.Pattern).Success)
-                    {
-                        retElements = TokenizeOrderedList(parent, mdRow);
-                    }
-                    else
-                    {
-                        retElements = Tokenize(parent, mdRow);
-                    }
+                    retElements = TokenizeList(parent, mdRow);
                     break;
                 case LexerStatus.UnorderedList:
-                    if(Regex.Match(mdRow, ElementRegex.UnorderedListRegex.Pattern).Success)
-                    {
-                        retElements = TokenizeUnorderedList(elements.Last().Parent.Parent, mdRow);
-                    }
-                    else if (Regex.Match(mdRow, ElementRegex.OrderedListRegex.Pattern).Success)
-                    {
-                        retElements = TokenizeOrderedList(parent, mdRow);
-                    }
-                    else
-                    {
-                        Status = LexerStatus.Neutral;
-                        retElements = Tokenize(parent, mdRow);
-                    }
-                    break;
                 case LexerStatus.OrderedList:
-                    if(Regex.Match(mdRow, ElementRegex.UnorderedListRegex.Pattern).Success)
-                    {
-                        retElements = TokenizeUnorderedList(parent, mdRow);
-                    }
-                    else if (Regex.Match(mdRow, ElementRegex.OrderedListRegex.Pattern).Success)
-                    {
-                        retElements = TokenizeOrderedList(parent, mdRow);
-                    }
-                    else
-                    {
-                        retElements = Tokenize(parent, mdRow);
-                    }
+                    retElements = TokenizeList(elements.Last().Parent.Parent, mdRow);
                     break;
                 case LexerStatus.Table:
                     // TODO
@@ -95,16 +77,16 @@ public class Lexer
                     retElements = Tokenize(parent, mdRow);
                     break;
                 default:
-                    // TODO
                     retElements = Tokenize(parent, mdRow);
                     break;
             }
 
-            Console.WriteLine("return tree");
-            foreach(var t in retElements)
+            if(!retElements.Any())
             {
-                Console.WriteLine($"{t.Id} |{t.ToString()}");
+                Status = LexerStatus.Neutral;
+                retElements = Tokenize(parent, mdRow);
             }
+
             elements.AddRange(retElements);
         }
         return elements;
@@ -207,126 +189,192 @@ public class Lexer
         return elements;
     }
 
-    protected IEnumerable<Token> TokenizeUnorderedList(Token parent, string text)
+    protected IEnumerable<Token> TokenizeList(Token parent, string text)
     {
         List<Token> elements = new();
-        // 親がrootまたはUlではない場合は処理しない
-        if (parent.ElementType != ElementType.Root && parent.ElementType != ElementType.Ul)
+        ElementRegexResult ulResult = new ElementRegexResult(ElementRegex.UnorderedListRegex.ElementType, Regex.Match(text, ElementRegex.UnorderedListRegex.Pattern));
+        ElementRegexResult olResult = new ElementRegexResult(ElementRegex.OrderedListRegex.ElementType, Regex.Match(text, ElementRegex.OrderedListRegex.Pattern));
+        if (ulResult.IsMatch)
         {
-            return elements;
+            elements.AddRange(TokenizeUnorderedList(parent, ulResult));
+        }
+        else if (olResult.IsMatch)
+        {
+            elements.AddRange(TokenizeOrderedList(parent, olResult));
         }
 
-        ElementRegexResult result = new ElementRegexResult(ElementRegex.UnorderedListRegex.ElementType, Regex.Match(text, ElementRegex.UnorderedListRegex.Pattern));
-        if (!result.IsMatch)
-        {
-            return elements;
-        }
+        return elements;
+    }
 
+    protected IEnumerable<Token> TokenizeUnorderedList(Token parent, ElementRegexResult result)
+    {
+        List<Token> elements = new();
         Id++;
+
+        Token? ulToken = null;
+        Token liToken = new()
+        {
+            Id = Id,
+            ElementType = ElementType.Li,
+            Content = string.Empty
+        };
 
         if (Status == LexerStatus.Neutral)
         {
-            Token ulToken = new()
+            foreach(Group g in result.Match.Groups)
+            {
+                Console.WriteLine(g.Value);
+            }
+            ulToken = new()
             {
                 Id = Id,
                 ElementType = ElementType.Ul,
                 Parent = parent,
-                Content = string.Empty,
-                Attribute = new(){ Key = "space", Value = result.Match.Groups[1].Value }
+                Content = result.Match.Groups[1].Value
             };
-            elements.Add(ulToken);
-            Id++;
-            Token liToken = new()
-            {
-                Id = Id,
-                ElementType = ElementType.Li,
-                Parent = ulToken,
-                Content = string.Empty,
-            };
-            elements.Add(liToken);
-            elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
+            liToken.Parent = ulToken;
         }
         else
         {
-            if(parent.Attribute is not null && parent.Attribute.Key == "space")
+            if(parent.Content.Length == result.Match.Groups[1].Value.Length)
             {
-                Id++;
-                Token liToken = new()
+                liToken.Parent = parent;
+            }
+            else if (parent.Content.Length < result.Match.Groups[1].Value.Length)
+            {
+                ulToken = new()
                 {
                     Id = Id,
-                    ElementType = ElementType.Li,
-                    Content = string.Empty,
+                       ElementType = ElementType.Ul,
+                       Parent = parent,
+                       Content = result.Match.Groups[1].Value
                 };
-                switch(parent.Attribute.Value.Count().CompareTo(result.Match.Groups[1].Value.Count()))
-                {
-                    case 0 :
-                        liToken.Parent = parent;
-                        elements.Add(liToken);
-                        elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
-                        break;
-                    case 1 :
-                        if(parent.Parent.ElementType != ElementType.Ul)
-                        {
-                            liToken.Parent = parent;
-                            elements.Add(liToken);
-                            elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
-                        }
-                        else
-                        {
-                            liToken.Parent = parent.Parent;
-                            elements.Add(liToken);
-                            elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
-                        }
-                        break;
-                    case -1:
-                        Token ulToken = new()
-                        {
-                            Id = Id,
-                               ElementType = ElementType.Ul,
-                               Parent = parent,
-                               Content = string.Empty,
-                               Attribute = new(){ Key = "space", Value = result.Match.Groups[1].Value }
-                        };
-                        elements.Add(ulToken);
-                        Id++;
-                        liToken.Parent = ulToken;
-                        elements.Add(liToken);
-                        elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
-                        break;
-                }
+                liToken.Parent = ulToken;
             }
             else
             {
-                Id++;
-                Token liToken = new()
+                Token tempParent = parent;
+
+                while(true)
                 {
-                    Id = Id,
-                       ElementType = ElementType.Li,
-                       Parent = parent,
-                       Content = string.Empty,
-                };
-                elements.Add(liToken);
-                elements.AddRange(Tokenize(liToken, result.Match.Groups[2].Value));
+                    if(tempParent.Parent is null)
+                    {
+                        liToken.Parent = tempParent;
+                        break;
+                    }
+
+                    if(tempParent.Parent.ElementType != ElementType.Ul && tempParent.Parent.ElementType != ElementType.Ol)
+                    {
+                        liToken.Parent = tempParent;
+                        break;
+                    }
+
+                    if(tempParent.Parent.Content.Length < result.Match.Groups[1].Value.Length)
+                    {
+                        liToken.Parent = tempParent;
+                        break;
+                    }
+                    tempParent = tempParent.Parent;
+                }
             }
         }
+
+        if (ulToken is not null)
+        {
+            elements.Add(ulToken);
+            Id++;
+            liToken.Id++;
+        }
+        elements.Add(liToken);
+        elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
         Status = LexerStatus.UnorderedList;
         return elements;
     }
-
-    protected IEnumerable<Token> TokenizeOrderedList(Token parent, string text)
+    
+    protected IEnumerable<Token> TokenizeOrderedList(Token parent, ElementRegexResult result)
     {
         List<Token> elements = new();
-        // 親がrootではない場合
-        if (parent.ElementType != ElementType.Root)
+        Id++;
+
+        Token? olToken = null;
+        Token liToken = new()
         {
-            return elements;
+            Id = Id,
+            ElementType = ElementType.Li,
+            Content = string.Empty
+        };
+
+        if (Status == LexerStatus.Neutral)
+        {
+            olToken = new()
+            {
+                Id = Id,
+                ElementType = ElementType.Ol,
+                Parent = parent,
+                Content = result.Match.Groups[1].Value
+            };
+            liToken.Parent = olToken;
+        }
+        else
+        {
+            if(parent.Content.Length == result.Match.Groups[1].Value.Length)
+            {
+                liToken.Parent = parent;
+            }
+            else if (parent.Content.Length < result.Match.Groups[1].Value.Length)
+            {
+                olToken = new()
+                {
+                    Id = Id,
+                       ElementType = ElementType.Ol,
+                       Parent = parent,
+                       Content = result.Match.Groups[1].Value
+                };
+                liToken.Parent = olToken;
+            }
+            else
+            {
+                Token tempParent = parent;
+
+                while(true)
+                {
+                    if(tempParent.Parent is null)
+                    {
+                        olToken.Parent = tempParent;
+                        break;
+                    }
+
+                    if(tempParent.Parent.ElementType != ElementType.Ul && tempParent.Parent.ElementType != ElementType.Ol)
+                    {
+                        olToken.Parent = tempParent;
+                        break;
+                    }
+
+                    if(tempParent.Parent.Content.Length < result.Match.Groups[1].Value.Length)
+                    {
+                        olToken.Parent = tempParent;
+                        break;
+                    }
+                    tempParent = tempParent.Parent;
+                }
+            }
         }
 
-        ElementRegexResult result = new ElementRegexResult(ElementRegex.OrderedListRegex.ElementType, Regex.Match(text, ElementRegex.OrderedListRegex.Pattern));
-        if (!result.IsMatch)
+        if (olToken is not null)
         {
-            return elements;
+            elements.Add(olToken);
+            Id++;
+            liToken.Id++;
         }
+        elements.Add(liToken);
+        elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
+        Status = LexerStatus.OrderedList;
+        return elements;
+    }
+
+    protected IEnumerable<Token> TokenizeTable(Token parent, string text)
+    {
+        List<Token> elements = new();
 
         return elements;
     }

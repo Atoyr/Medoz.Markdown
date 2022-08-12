@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 
 namespace Medoz.Markdown;
 
@@ -8,7 +9,23 @@ public class Token
     public Token? Parent { get; set; }
     public ElementType ElementType { get; set; }
     public string Content { get; set; }
-    public Attribute? Attribute { get; set; }
+    public IEnumerable<Attribute> Attributes { get; private set; } = new List<Attribute>();
+
+    public Token AddAttribute(string key, string value)
+    {
+        (Attributes as List<Attribute>).Add(new Attribute(){ Key = key, Value = value });
+        return this;
+    }
+
+    private string AttributeString()
+    {
+        StringBuilder sb = new();
+        foreach(var a in Attributes)
+        {
+            sb.Append($" {a.Key}=\"{a.Value}\"");
+        }
+        return sb.ToString();
+    }
 
     // public override string ToString() => $"{Id} : {ElementType.GetTypeName()} : {Content}";
     public override string ToString()
@@ -18,43 +35,45 @@ public class Token
             case ElementType.Root:
                 return Content;
             case ElementType.Paragraph:
-                return $"<p>{Content}</p>";
+                return $"<p {AttributeString()}>{Content}</p>";
             case ElementType.H1:
-                return $"<h1>{Content}</h1>";
+                return $"<h1 {AttributeString()}>{Content}</h1>";
             case ElementType.H2:
-                return $"<h2>{Content}</h2>";
+                return $"<h2 {AttributeString()}>{Content}</h2>";
             case ElementType.H3:
-                return $"<h3>{Content}</h3>";
+                return $"<h3 {AttributeString()}>{Content}</h3>";
             case ElementType.H4:
-                return $"<h4>{Content}</h4>";
+                return $"<h4 {AttributeString()}>{Content}</h4>";
             case ElementType.H5:
-                return $"<h5>{Content}</h5>";
+                return $"<h5 {AttributeString()}>{Content}</h5>";
             case ElementType.H6:
-                return $"<h6>{Content}</h6>";
+                return $"<h6 {AttributeString()}>{Content}</h6>";
             case ElementType.Text:
                 return Content;
             case ElementType.Strong:
-                return $"<strong>{Content}</strong>";
+                return $"<strong {AttributeString()}>{Content}</strong>";
             case ElementType.Italic:
-                return $"<italic>{Content}</italic>";
+                return $"<italic {AttributeString()}>{Content}</italic>";
             case ElementType.Strike:
-                return $"<strike>{Content}</strike>";
+                return $"<strike {AttributeString()}>{Content}</strike>";
             case ElementType.Link:
                 return "Link";
             case ElementType.Image:
                 return "Image";
             case ElementType.Ul:
-                return $"<ul>{Content}</ul>";
+                return $"<ul {AttributeString()}>{Content}</ul>";
             case ElementType.Li:
-                return $"<li>{Content}</li>";
+                return $"<li {AttributeString()}>{Content}</li>";
             case ElementType.Ol:
-                return $"<ol>{Content}</ol>";
+                return $"<ol {AttributeString()}>{Content}</ol>";
             case ElementType.Table:
                 return "Table";
             case ElementType.Code:
-                return $"<code>{Content}</code>";
+                return $"<code {AttributeString()}>{Content}</code>";
             case ElementType.BlockQuote:
                 return "BlockQuote";
+            case ElementType.NewLine:
+                return "<br />";
             default:
                 return Content;
         }

@@ -28,7 +28,8 @@ public class ElementRegex
     };
 
     public static readonly ElementRegex UnorderedListRegex = new ElementRegex(){ ElementType = ElementType.Ul, Pattern = @"^( *)([-|\*|\+] (.+))$" };
-    public static readonly ElementRegex OrderedListRegex = new ElementRegex(){ ElementType = ElementType.Ol, Pattern = @"^( *)([-|\*|\+] (.+))$" };
+    public static readonly ElementRegex OrderedListRegex = new ElementRegex(){ ElementType = ElementType.Ol, Pattern = @"^( *)(([0-9]+)\. (.+))$" };
+    public static readonly ElementRegex TableHeadBodyRegex = new ElementRegex(){ ElementType = ElementType.Table, Pattern = @"(?=\|(.+?)\|)" };
 }
 
 

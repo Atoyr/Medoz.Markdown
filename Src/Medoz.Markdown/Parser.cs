@@ -10,7 +10,7 @@ public class Parser
         Lexer l = new();
         List<Token> tokens = l.Analize(markdownText).ToList();
 
-        showTree(tokens);
+        // showTree(tokens);
 
         for(int i = tokens.Count() - 1; 0 <= i; i--)
         {

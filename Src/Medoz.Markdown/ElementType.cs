@@ -24,6 +24,7 @@ public enum ElementType
     Table,
     Code,
     BlockQuote,
+    NewLine,
 }
 
 public static class ElementTypeEx
@@ -72,6 +73,8 @@ public static class ElementTypeEx
                 return "Code";
             case ElementType.BlockQuote:
                 return "BlockQuote";
+            case ElementType.NewLine:
+                return "NewLine";
             default:
                 return string.Empty;
         }
