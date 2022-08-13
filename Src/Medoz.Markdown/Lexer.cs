@@ -7,6 +7,14 @@ public class Lexer
 {
     protected int Id { get; private set; } = 0;
     protected LexerStatus Status { get; private set; }
+    protected List<ElementRegexResult> TableRowRegexResult { get; private set; }
+
+    public Lexer() 
+    {
+        Status = LexerStatus.Neutral;
+        TableRowRegexResult = new();
+    }
+
     protected enum LexerStatus
     {
         Neutral,
@@ -47,6 +55,7 @@ public class Lexer
         elements.Add(parent);
         Status = LexerStatus.Neutral;
         LexerStatus nextStatus = LexerStatus.Neutral;
+        TableRowRegexResult.Clear();
 
         foreach(string mdRow in mdArray)
         {
@@ -63,14 +72,31 @@ public class Lexer
             {
                 case LexerStatus.Neutral:
                     retElements = TokenizeList(parent, mdRow);
+                    if(!retElements.Any())
+                    {
+                        if(!CheckAndAddTableToken(mdRow))
+                        {
+
+                        }
+                    }
                     break;
                 case LexerStatus.UnorderedList:
                 case LexerStatus.OrderedList:
                     retElements = TokenizeList(elements.Last().Parent.Parent, mdRow);
+
+                    if(!retElements.Any())
+                    {
+                        if(!CheckAndAddTableToken(mdRow))
+                        {
+
+                        }
+                    }
                     break;
                 case LexerStatus.Table:
-                    // TODO
-                    retElements = Tokenize(parent, mdRow);
+                    if(!CheckAndAddTableToken(mdRow))
+                    {
+                        retElements = TokenizeList(parent, mdRow);
+                    }
                     break;
                 case LexerStatus.Code:
                     // TODO
@@ -81,7 +107,7 @@ public class Lexer
                     break;
             }
 
-            if(!retElements.Any())
+            if(!retElements.Any() && !TableRowRegexResult.Any())
             {
                 Status = LexerStatus.Neutral;
                 retElements = Tokenize(parent, mdRow);
@@ -89,6 +115,7 @@ public class Lexer
 
             elements.AddRange(retElements);
         }
+        TableRowRegexResult.Clear();
         return elements;
     }
 
@@ -102,7 +129,7 @@ public class Lexer
         {
             IEnumerable<ElementRegexResult> blockResult = 
                 ElementRegex.BlockElementRegexs
-                .Select(x => new ElementRegexResult(x.ElementType, Regex.Match(text, x.Pattern)))
+                .Select(x => new ElementRegexResult(x.ElementType, Regex.Match(text, x.Pattern), text))
                 .Where(x => x.IsMatch);
             if (blockResult.Any())
             {
@@ -137,7 +164,7 @@ public class Lexer
             // inline Parse
             IEnumerable<ElementRegexResult> inlineResults =
                 ElementRegex.InlineElementRegexs
-                .Select(x => new ElementRegexResult(x.ElementType, Regex.Match(text, x.Pattern)))
+                .Select(x => new ElementRegexResult(x.ElementType, Regex.Match(text, x.Pattern), text))
                 .Where(x => x.IsMatch)
                 .OrderBy(x => x.Match.Index);
             if (inlineResults.Any())
@@ -192,8 +219,8 @@ public class Lexer
     protected IEnumerable<Token> TokenizeList(Token parent, string text)
     {
         List<Token> elements = new();
-        ElementRegexResult ulResult = new ElementRegexResult(ElementRegex.UnorderedListRegex.ElementType, Regex.Match(text, ElementRegex.UnorderedListRegex.Pattern));
-        ElementRegexResult olResult = new ElementRegexResult(ElementRegex.OrderedListRegex.ElementType, Regex.Match(text, ElementRegex.OrderedListRegex.Pattern));
+        ElementRegexResult ulResult = new ElementRegexResult(ElementRegex.UnorderedListRegex.ElementType, Regex.Match(text, ElementRegex.UnorderedListRegex.Pattern), text);
+        ElementRegexResult olResult = new ElementRegexResult(ElementRegex.OrderedListRegex.ElementType, Regex.Match(text, ElementRegex.OrderedListRegex.Pattern), text);
         if (ulResult.IsMatch)
         {
             elements.AddRange(TokenizeUnorderedList(parent, ulResult));
@@ -370,6 +397,25 @@ public class Lexer
         elements.AddRange(Tokenize(liToken, result.Match.Groups[3].Value));
         Status = LexerStatus.OrderedList;
         return elements;
+    }
+
+    protected bool CheckAndAddTableToken(string text)
+    {
+        Match tableMatch = Regex.Match(text, ElementRegex.TableHeadBodyRegex.Pattern);
+        if(tableMatch.Success)
+        {
+            if (Status == LexerStatus.Table)
+            {
+                TableRowRegexResult.Add(new ElementRegexResult(ElementType.TableBody, tableMatch, text));
+            }
+            else
+            {
+                TableRowRegexResult.Add(new ElementRegexResult(ElementType.TableHead, tableMatch, text));
+                Status = LexerStatus.Table;
+            }
+            return true;
+        }
+        return false;
     }
 
     protected IEnumerable<Token> TokenizeTable(Token parent, string text)

@@ -9,6 +9,7 @@ public class ElementRegexResult
 {
     public ElementType ElementType { get; set; }
     public Match Match { get; set; }
+    public string Content { get; set; }
 
     public bool IsMatch
     {
@@ -17,10 +18,11 @@ public class ElementRegexResult
 
     private ElementRegexResult() { }
 
-    public ElementRegexResult(ElementType type, Match match) 
+    public ElementRegexResult(ElementType type, Match match, string content) 
     {
         ElementType = type;
         Match = match;
+        Content = content;
     }
 }
 
