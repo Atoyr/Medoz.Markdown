@@ -8,8 +8,19 @@ namespace Medoz.Markdown;
 public class ElementRegexResult
 {
     public ElementType ElementType { get; set; }
-    public Match Match { get; set; }
     public string Content { get; set; }
+    public Match? Match { get; private set; }
+
+    private MatchCollection? _matches;
+    public MatchCollection? Matches 
+    {
+        get => _matches;
+        set
+        {
+            _matches = value;
+            Match = _matches?.FirstOrDefault();
+        }
+    }
 
     public bool IsMatch
     {
@@ -18,11 +29,17 @@ public class ElementRegexResult
 
     private ElementRegexResult() { }
 
-    public ElementRegexResult(ElementType type, Match match, string content) 
+    public ElementRegexResult(string content)
+    {
+        ElementType = ElementType.Text;
+        Content = content;
+    }
+
+    public ElementRegexResult(ElementType type, string content, MatchCollection? matches)
     {
         ElementType = type;
-        Match = match;
         Content = content;
+        Matches = matches;
     }
 }
 

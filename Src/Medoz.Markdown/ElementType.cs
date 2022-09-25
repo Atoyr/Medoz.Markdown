@@ -22,9 +22,11 @@ public enum ElementType
     Li,
     Ol,
     Table,
-    TableHead,
-    TableBody,
-    TableAlign,
+    THead,
+    TBody,
+    TR,
+    TH,
+    TD,
     Code,
     BlockQuote,
     NewLine,
@@ -72,12 +74,16 @@ public static class ElementTypeEx
                 return "Ol";
             case ElementType.Table:
                 return "Table";
-            case ElementType.TableHead:
-                return "TableHead";
-            case ElementType.TableBody:
-                return "TableBody";
-            case ElementType.TableAlign:
-                return "TableAlign";
+            case ElementType.THead:
+                return "THead";
+            case ElementType.TBody:
+                return "TBody";
+            case ElementType.TR:
+                return "TR";
+            case ElementType.TH:
+                return "TH";
+            case ElementType.TD:
+                return "TD";
             case ElementType.Code:
                 return "Code";
             case ElementType.BlockQuote:

@@ -67,7 +67,17 @@ public class Token
             case ElementType.Ol:
                 return $"<ol {AttributeString()}>{Content}</ol>";
             case ElementType.Table:
-                return "Table";
+                return $"<table {AttributeString()}>{Content}</table>";
+            case ElementType.THead:
+                return $"<thead {AttributeString()}>{Content}</thead>";
+            case ElementType.TBody:
+                return $"<tbody {AttributeString()}>{Content}</tbody>";
+            case ElementType.TR:
+                return $"<tr {AttributeString()}>{Content}</tr>";
+            case ElementType.TH:
+                return $"<th {AttributeString()}>{Content}</th>";
+            case ElementType.TD:
+                return $"<td {AttributeString()}>{Content}</td>";
             case ElementType.Code:
                 return $"<code {AttributeString()}>{Content}</code>";
             case ElementType.BlockQuote:
