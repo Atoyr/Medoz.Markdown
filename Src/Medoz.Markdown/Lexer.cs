@@ -118,12 +118,6 @@ public class Lexer
                         break;
                     }
 
-                    Console.WriteLine("Pool");
-                    foreach( var r in Pool)
-                    {
-                        Console.WriteLine(r.Content);
-                    }
-
                     elements.AddRange(TokenizedTable(parent, Pool, elements.Last().Id));
                     Pool.Clear();
 
@@ -152,7 +146,7 @@ public class Lexer
                     elements.AddRange(TokenizedList(parent, Pool, elements.Last().Id));
                     break;
                 case LexerStatus.Table:
-                    // TODO
+                    elements.AddRange(TokenizedTable(parent, Pool, elements.Last().Id));
                     break;
                 case LexerStatus.Code:
                     // TODO
